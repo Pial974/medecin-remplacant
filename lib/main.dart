@@ -91,7 +91,7 @@ class _AppRouterState extends State<AppRouter> {
   @override
   Widget build(BuildContext context) {
     // Écran de chargement
-    if (_onboardingComplete == null) {
+    if (_onboardingComplete == null || _authComplete == null) {
       return const Scaffold(
         backgroundColor: Colors.transparent,
         body: Center(
@@ -106,7 +106,7 @@ class _AppRouterState extends State<AppRouter> {
     }
 
     // Authentification
-    if (_authComplete == false) {
+    if (!_authComplete!) {
       return AuthScreen(onAuthSuccess: _completeAuth);
     }
 
