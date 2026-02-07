@@ -5,7 +5,10 @@ import 'package:provider/provider.dart';
 import '../widgets/glass_card.dart';
 import '../services/database_service.dart';
 import '../services/backup_service.dart';
+import '../services/supabase_service.dart';
 import '../providers/theme_provider.dart';
+import '../providers/remplacement_provider.dart';
+import 'auth_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,9 +19,11 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _nameController = TextEditingController();
+  final _supabase = SupabaseService();
   String _appVersion = '';
   String _buildNumber = '';
   bool _isLoading = true;
+  bool _isSyncing = false;
 
   @override
   void initState() {
@@ -42,6 +47,98 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _buildNumber = packageInfo.buildNumber;
       _isLoading = false;
     });
+  }
+
+  Future<void> _syncNow() async {
+    if (!_supabase.isLoggedIn) return;
+
+    setState(() => _isSyncing = true);
+
+    try {
+      final provider = Provider.of<RemplacementProvider>(context, listen: false);
+      final localData = provider.allRemplacements;
+      final cloudData = await _supabase.fullSync(localData);
+
+      // Importer les données du cloud dans la base locale
+      final db = DatabaseService();
+      for (final r in cloudData) {
+        await db.updateRemplacement(r);
+      }
+
+      await provider.loadRemplacements();
+      await provider.loadStatistiques();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${cloudData.length} remplacement(s) synchronisé(s)'),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur de sync: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
+  }
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Déconnexion'),
+        content: const Text(
+          'Vos données locales seront conservées.\n'
+          'Voulez-vous vous déconnecter ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Déconnecter'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await _supabase.signOut();
+    setState(() {});
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Déconnecté'),
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
+    }
+  }
+
+  void _goToLogin() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AuthScreen(
+          onAuthSuccess: () {
+            Navigator.of(context).pop();
+            setState(() {});
+            _syncNow();
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _saveName() async {
@@ -207,8 +304,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   const SizedBox(height: 24),
 
+                  // Section Compte & Sync
+                  _buildSectionTitle('Compte & Synchronisation'),
+                  const SizedBox(height: 12),
+                  _buildAccountCard(),
+
+                  const SizedBox(height: 24),
+
                   // Section Sauvegarde
-                  _buildSectionTitle('Sauvegarde'),
+                  _buildSectionTitle('Sauvegarde locale'),
                   const SizedBox(height: 12),
                   _buildBackupCard(),
 
@@ -413,6 +517,161 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAccountCard() {
+    final isLoggedIn = _supabase.isLoggedIn;
+    final email = _supabase.currentUser?.email;
+
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          if (isLoggedIn) ...[
+            // Info utilisateur connecté
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.cloud_done,
+                    color: Color(0xFF10B981),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Connecté',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF10B981),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        email ?? '',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Bouton synchroniser
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isSyncing ? null : _syncNow,
+                icon: _isSyncing
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.sync, size: 18),
+                label: Text(_isSyncing ? 'Synchronisation...' : 'Synchroniser maintenant'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Bouton déconnexion
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _logout,
+                icon: const Icon(Icons.logout, size: 18),
+                label: const Text('Se déconnecter'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.grey,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ] else ...[
+            // Non connecté
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.cloud_off,
+                    color: Colors.orange,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Non connecté',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Connectez-vous pour synchroniser vos données entre appareils',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _goToLogin,
+                icon: const Icon(Icons.login, size: 18),
+                label: const Text('Se connecter'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 

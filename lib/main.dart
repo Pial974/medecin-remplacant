@@ -6,13 +6,16 @@ import 'providers/remplacement_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/auth_screen.dart';
 import 'utils/liquid_theme.dart';
 import 'services/database_service.dart';
+import 'services/supabase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('fr_FR', null);
   await DatabaseService.initialize();
+  await SupabaseService.initialize();
   runApp(const MyApp());
 }
 
@@ -51,18 +54,23 @@ class AppRouter extends StatefulWidget {
 
 class _AppRouterState extends State<AppRouter> {
   bool? _onboardingComplete;
+  bool? _authComplete;
 
   @override
   void initState() {
     super.initState();
-    _checkOnboarding();
+    _checkState();
   }
 
-  Future<void> _checkOnboarding() async {
+  Future<void> _checkState() async {
     final prefs = await SharedPreferences.getInstance();
-    final complete = prefs.getBool('onboarding_complete') ?? false;
+    final onboarding = prefs.getBool('onboarding_complete') ?? false;
+    final authSkipped = prefs.getBool('auth_skipped') ?? false;
+    final isLoggedIn = SupabaseService().isLoggedIn;
+
     setState(() {
-      _onboardingComplete = complete;
+      _onboardingComplete = onboarding;
+      _authComplete = isLoggedIn || authSkipped;
     });
   }
 
@@ -72,9 +80,17 @@ class _AppRouterState extends State<AppRouter> {
     });
   }
 
+  Future<void> _completeAuth() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('auth_skipped', true);
+    setState(() {
+      _authComplete = true;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Afficher un écran de chargement pendant la vérification
+    // Écran de chargement
     if (_onboardingComplete == null) {
       return const Scaffold(
         backgroundColor: Colors.transparent,
@@ -84,12 +100,17 @@ class _AppRouterState extends State<AppRouter> {
       );
     }
 
-    // Afficher l'onboarding si pas encore complété
+    // Onboarding
     if (!_onboardingComplete!) {
       return OnboardingScreen(onComplete: _completeOnboarding);
     }
 
-    // Sinon afficher l'écran principal
+    // Authentification
+    if (_authComplete == false) {
+      return AuthScreen(onAuthSuccess: _completeAuth);
+    }
+
+    // Écran principal
     return const HomeScreen();
   }
 }
