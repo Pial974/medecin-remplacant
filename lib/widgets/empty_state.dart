@@ -162,10 +162,10 @@ class _EmptyStateState extends State<EmptyState> {
   Widget _buildTip() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final tips = [
-      'Astuce : Ajoutez vos remplacements dès qu\'ils sont terminés pour un suivi précis.',
-      'Conseil : Vérifiez régulièrement vos paiements en attente.',
-      'Info : L\'app calcule automatiquement vos cotisations URSSAF.',
-      'Rappel : Exportez régulièrement vos données en PDF pour vos archives.',
+      'Ajoutez vos remplacements dès qu\'ils sont terminés pour un suivi précis.',
+      'Vérifiez régulièrement vos paiements en attente.',
+      'L\'app calcule automatiquement vos cotisations URSSAF à 22%.',
+      'Exportez vos données régulièrement pour vos archives.',
     ];
 
     final tipIndex = DateTime.now().day % tips.length;

@@ -31,60 +31,64 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: const [
-          _RemplacementsTab(),
-          LiquidBackground(child: DashboardScreen()),
-          LiquidBackground(child: SettingsScreen()),
-        ],
-      ),
-      bottomNavigationBar: ClipRRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: NavigationBar(
-            selectedIndex: _currentIndex,
-            onDestinationSelected: (index) {
-              setState(() => _currentIndex = index);
-            },
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                selectedIcon: Icon(Icons.receipt_long),
-                label: 'Remplacements',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.insights_outlined),
-                selectedIcon: Icon(Icons.insights),
-                label: 'Analyse',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings),
-                label: 'Paramètres',
-              ),
+    return Consumer<RemplacementProvider>(
+      builder: (context, provider, child) {
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: IndexedStack(
+            index: _currentIndex,
+            children: const [
+              _RemplacementsTab(),
+              LiquidBackground(child: DashboardScreen()),
+              LiquidBackground(child: SettingsScreen()),
             ],
           ),
-        ),
-      ),
-      floatingActionButton: _currentIndex == 0
-          ? FloatingActionButton.extended(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const LiquidBackground(
-                      child: AddRemplacementScreen(),
-                    ),
+          bottomNavigationBar: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: NavigationBar(
+                selectedIndex: _currentIndex,
+                onDestinationSelected: (index) {
+                  setState(() => _currentIndex = index);
+                },
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.receipt_long_outlined),
+                    selectedIcon: Icon(Icons.receipt_long),
+                    label: 'Remplacements',
                   ),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Nouveau'),
-            )
-          : null,
+                  NavigationDestination(
+                    icon: Icon(Icons.insights_outlined),
+                    selectedIcon: Icon(Icons.insights),
+                    label: 'Analyse',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.settings_outlined),
+                    selectedIcon: Icon(Icons.settings),
+                    label: 'Paramètres',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          floatingActionButton: _currentIndex == 0 && provider.allRemplacements.isNotEmpty
+              ? FloatingActionButton.extended(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const LiquidBackground(
+                          child: AddRemplacementScreen(),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Nouveau'),
+                )
+              : null,
+        );
+      },
     );
   }
 }
@@ -373,6 +377,7 @@ class _RemplacementsTabState extends State<_RemplacementsTab> {
 
   Widget _buildSummaryCard(BuildContext context, RemplacementProvider provider,
       NumberFormat currencyFormat) {
+    final numberFormat = NumberFormat('0.0', 'fr_FR');
     return GlassCard(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Column(
@@ -395,7 +400,7 @@ class _RemplacementsTabState extends State<_RemplacementsTab> {
               _buildStatItem(
                 context,
                 'Jours',
-                provider.totalJours.toStringAsFixed(1),
+                numberFormat.format(provider.totalJours),
                 const Color(0xFF3B82F6),
                 Icons.calendar_today,
               ),
