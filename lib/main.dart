@@ -67,16 +67,19 @@ class _AppRouterState extends State<AppRouter> {
   void _listenToAuthChanges() {
     SupabaseService().authStateChanges.listen((AuthState data) {
       final event = data.event;
-      if (event == AuthChangeEvent.signedIn ||
-          event == AuthChangeEvent.tokenRefreshed ||
-          event == AuthChangeEvent.initialSession) {
+      final session = data.session;
+
+      if (event == AuthChangeEvent.signedIn && session != null) {
+        setState(() {
+          _authComplete = true;
+        });
+      } else if (event == AuthChangeEvent.tokenRefreshed && session != null) {
         setState(() {
           _authComplete = true;
         });
       } else if (event == AuthChangeEvent.signedOut) {
-        setState(() {
-          _authComplete = false;
-        });
+        // Ne pas changer _authComplete si l'utilisateur a skip l'auth
+        // (on ne veut pas le renvoyer sur l'écran de connexion)
       }
     });
   }
