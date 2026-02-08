@@ -35,6 +35,7 @@ class SupabaseService {
     return await client.auth.signUp(
       email: email,
       password: password,
+      emailRedirectTo: 'https://pial974.github.io/medecin-remplacant/',
     );
   }
 
@@ -56,7 +57,10 @@ class SupabaseService {
 
   // Réinitialisation mot de passe
   Future<void> resetPassword(String email) async {
-    await client.auth.resetPasswordForEmail(email);
+    await client.auth.resetPasswordForEmail(
+      email,
+      redirectTo: 'https://pial974.github.io/medecin-remplacant/',
+    );
   }
 
   // ==================== SYNCHRONISATION ====================

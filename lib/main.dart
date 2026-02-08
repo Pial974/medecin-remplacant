@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/remplacement_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
@@ -60,6 +61,24 @@ class _AppRouterState extends State<AppRouter> {
   void initState() {
     super.initState();
     _checkState();
+    _listenToAuthChanges();
+  }
+
+  void _listenToAuthChanges() {
+    SupabaseService().authStateChanges.listen((AuthState data) {
+      final event = data.event;
+      if (event == AuthChangeEvent.signedIn ||
+          event == AuthChangeEvent.tokenRefreshed ||
+          event == AuthChangeEvent.initialSession) {
+        setState(() {
+          _authComplete = true;
+        });
+      } else if (event == AuthChangeEvent.signedOut) {
+        setState(() {
+          _authComplete = false;
+        });
+      }
+    });
   }
 
   Future<void> _checkState() async {
