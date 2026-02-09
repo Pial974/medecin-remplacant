@@ -13,6 +13,8 @@ class AddRemplacementScreen extends StatefulWidget {
   State<AddRemplacementScreen> createState() => _AddRemplacementScreenState();
 }
 
+enum MontantInputMode { avantRetro, apresRetro }
+
 class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
   final _formKey = GlobalKey<FormState>();
   final _medecinController = TextEditingController();
@@ -25,6 +27,7 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
   int _tauxRetrocession = 70;
   String _modePaiement = 'Virement';
   String _statutPaiement = 'En attente';
+  MontantInputMode _inputMode = MontantInputMode.avantRetro;
 
   bool get isEditing => widget.remplacement != null;
 
@@ -54,12 +57,36 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
     super.dispose();
   }
 
-  double get _montantApresRetro {
-    final montant = double.tryParse(_montantController.text) ?? 0;
-    return montant * (_tauxRetrocession / 100);
+  // Calculs selon le mode de saisie
+  double get _montantAvantRetro {
+    final montantSaisi = double.tryParse(_montantController.text) ?? 0;
+    if (_inputMode == MontantInputMode.avantRetro) {
+      // Mode: Montant avant rétro → on retourne directement
+      return montantSaisi;
+    } else {
+      // Mode: Montant après rétro → on calcule le montant avant
+      // montant_avant = montant_apres / (taux / 100)
+      final tauxDecimal = _tauxRetrocession / 100;
+      return tauxDecimal > 0 ? montantSaisi / tauxDecimal : 0;
+    }
   }
 
-  double get _urssaf => _montantApresRetro * 0.135;
+  double get _montantRetrocession {
+    return _montantAvantRetro * (_tauxRetrocession / 100);
+  }
+
+  double get _montantApresRetro {
+    final montantSaisi = double.tryParse(_montantController.text) ?? 0;
+    if (_inputMode == MontantInputMode.avantRetro) {
+      // Mode: Montant avant → on calcule après
+      return montantSaisi * (_tauxRetrocession / 100);
+    } else {
+      // Mode: Montant après → on retourne directement
+      return montantSaisi;
+    }
+  }
+
+  double get _urssaf => _montantApresRetro * 0.22;
   double get _net => _montantApresRetro - _urssaf;
 
   Future<void> _selectDate(bool isDebut) async {
@@ -92,7 +119,7 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
         medecinRemplace: _medecinController.text.trim(),
         nombreJours: double.parse(_joursController.text),
         tauxRetrocession: _tauxRetrocession,
-        montantAvantRetrocession: double.parse(_montantController.text),
+        montantAvantRetrocession: _montantAvantRetro,
         modePaiement: _modePaiement,
         statutPaiement: _statutPaiement,
         notes: _notesController.text.isEmpty ? null : _notesController.text,
@@ -222,14 +249,77 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Montant avant rétrocession
+            // Toggle pour choisir le mode de saisie
+            Card(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Mode de saisie du montant',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<MontantInputMode>(
+                      segments: const [
+                        ButtonSegment(
+                          value: MontantInputMode.avantRetro,
+                          label: Text('Montant brut'),
+                          icon: Icon(Icons.account_balance_wallet_outlined),
+                        ),
+                        ButtonSegment(
+                          value: MontantInputMode.apresRetro,
+                          label: Text('Montant net'),
+                          icon: Icon(Icons.payments_outlined),
+                        ),
+                      ],
+                      selected: {_inputMode},
+                      onSelectionChanged: (Set<MontantInputMode> newSelection) {
+                        setState(() {
+                          _inputMode = newSelection.first;
+                        });
+                      },
+                      style: ButtonStyle(
+                        textStyle: WidgetStateProperty.all(
+                          const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _inputMode == MontantInputMode.avantRetro
+                          ? 'Montant total avant rétrocession au médecin'
+                          : 'Montant que vous allez toucher (après rétrocession)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Montant (label adapté selon le mode)
             TextFormField(
               controller: _montantController,
-              decoration: const InputDecoration(
-                labelText: 'Montant brut (avant rétrocession)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.euro),
+              decoration: InputDecoration(
+                labelText: _inputMode == MontantInputMode.avantRetro
+                    ? 'Montant brut (avant rétrocession)'
+                    : 'Montant net (après rétrocession)',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.euro),
                 suffixText: '€',
+                helperText: _inputMode == MontantInputMode.avantRetro
+                    ? 'Montant total facturé'
+                    : 'Montant à recevoir après rétrocession',
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
@@ -272,11 +362,21 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
                     const Text('Calculs automatiques',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const Divider(),
-                    _buildCalcRow('Après rétrocession',
-                        currencyFormat.format(_montantApresRetro)),
+                    // Si mode "après rétro", montrer le montant avant calculé
+                    if (_inputMode == MontantInputMode.apresRetro)
+                      _buildCalcRow('Montant brut (calculé)',
+                          currencyFormat.format(_montantAvantRetro),
+                          color: Colors.blue.shade700),
+                    _buildCalcRow('Montant de la rétrocession ($_tauxRetrocession%)',
+                        currencyFormat.format(_montantRetrocession)),
+                    // Si mode "avant rétro", montrer le montant après calculé
+                    if (_inputMode == MontantInputMode.avantRetro)
+                      _buildCalcRow('Après rétrocession',
+                          currencyFormat.format(_montantApresRetro),
+                          color: Colors.blue.shade700),
                     _buildCalcRow(
-                        'URSSAF (13.5%)', currencyFormat.format(_urssaf)),
-                    _buildCalcRow('Net avant impôts', currencyFormat.format(_net),
+                        'Charges URSSAF (22%)', currencyFormat.format(_urssaf)),
+                    _buildCalcRow('Net après charges', currencyFormat.format(_net),
                         isBold: true),
                   ],
                 ),
@@ -348,17 +448,23 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
     );
   }
 
-  Widget _buildCalcRow(String label, String value, {bool isBold = false}) {
+  Widget _buildCalcRow(String label, String value, {bool isBold = false, Color? color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(color: color),
+            ),
+          ),
           Text(
             value,
             style: TextStyle(
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              color: color,
             ),
           ),
         ],
