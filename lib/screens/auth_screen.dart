@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
+import '../services/biometric_service.dart';
 import '../widgets/glass_card.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -16,17 +17,72 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _supabase = SupabaseService();
+  final _biometric = BiometricService();
 
   bool _isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _rememberMe = true;
   String? _errorMessage;
 
+  bool _biometricAvailable = false;
+  String _biometricName = 'Biométrie';
+
   @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _checkBiometric();
+  }
+
+  Future<void> _checkBiometric() async {
+    final available = await _biometric.isBiometricAvailable();
+    final enabled = await _biometric.isBiometricEnabled();
+    final name = await _biometric.getBiometricName();
+
+    setState(() {
+      _biometricAvailable = available;
+      _biometricName = name;
+    });
+
+    // Si biométrie activée, proposer l'authentification automatique
+    if (available && enabled) {
+      _authenticateWithBiometric();
+    }
+  }
+
+  Future<void> _authenticateWithBiometric() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _biometric.authenticateWithBiometric();
+
+      if (result.success && result.email != null && result.password != null) {
+        // Se connecter avec les credentials sauvegardés
+        await _supabase.signIn(
+          email: result.email!,
+          password: result.password!,
+        );
+
+        if (_supabase.isLoggedIn && mounted) {
+          widget.onAuthSuccess();
+        }
+      } else if (result.error != null) {
+        setState(() {
+          _errorMessage = result.error;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = _getErrorMessage(e.toString());
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -37,17 +93,22 @@ class _AuthScreenState extends State<AuthScreen> {
       _errorMessage = null;
     });
 
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
     try {
       if (_isLogin) {
-        await _supabase.signIn(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
+        await _supabase.signIn(email: email, password: password);
+
+        // Proposer d'activer la biométrie si disponible et si "Rester connecté" est coché
+        if (_supabase.isLoggedIn && _rememberMe && _biometricAvailable) {
+          final biometricEnabled = await _biometric.isBiometricEnabled();
+          if (!biometricEnabled && mounted) {
+            _showEnableBiometricDialog(email, password);
+          }
+        }
       } else {
-        final response = await _supabase.signUp(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
+        final response = await _supabase.signUp(email: email, password: password);
 
         if (response.user != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -71,6 +132,46 @@ class _AuthScreenState extends State<AuthScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _showEnableBiometricDialog(String email, String password) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.fingerprint, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 12),
+            Text('Activer $_biometricName ?'),
+          ],
+        ),
+        content: Text(
+          'Voulez-vous utiliser $_biometricName pour vous connecter plus rapidement la prochaine fois ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Plus tard'),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _biometric.enableBiometric(email, password);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('$_biometricName activé !'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.check),
+            label: const Text('Activer'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _getErrorMessage(String error) {
@@ -115,6 +216,13 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -151,6 +259,28 @@ class _AuthScreenState extends State<AuthScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
+
+                // Bouton biométrique (si disponible et activé)
+                if (_biometricAvailable) ...[
+                  _buildBiometricButton(isDark),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.grey.shade400)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'ou',
+                          style: TextStyle(
+                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.grey.shade400)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Formulaire
                 GlassCard(
@@ -234,6 +364,24 @@ class _AuthScreenState extends State<AuthScreen> {
                             },
                           ),
                           const SizedBox(height: 8),
+
+                          // Rester connecté (seulement en mode login)
+                          if (_isLogin)
+                            CheckboxListTile(
+                              value: _rememberMe,
+                              onChanged: (value) {
+                                setState(() => _rememberMe = value ?? true);
+                              },
+                              title: const Text('Rester connecté'),
+                              subtitle: _biometricAvailable
+                                  ? Text(
+                                      'Activez $_biometricName pour une connexion rapide',
+                                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                    )
+                                  : null,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              contentPadding: EdgeInsets.zero,
+                            ),
 
                           // Mot de passe oublié
                           if (_isLogin)
@@ -332,6 +480,27 @@ class _AuthScreenState extends State<AuthScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBiometricButton(bool isDark) {
+    return OutlinedButton.icon(
+      onPressed: _isLoading ? null : _authenticateWithBiometric,
+      icon: Icon(
+        _biometricName == 'Face ID' ? Icons.face : Icons.fingerprint,
+        size: 28,
+      ),
+      label: Text('Se connecter avec $_biometricName'),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+          width: 2,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
       ),
     );

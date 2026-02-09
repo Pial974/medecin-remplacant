@@ -6,6 +6,7 @@ import '../widgets/glass_card.dart';
 import '../services/database_service.dart';
 import '../services/backup_service.dart';
 import '../services/supabase_service.dart';
+import '../services/biometric_service.dart';
 import '../providers/theme_provider.dart';
 import '../providers/remplacement_provider.dart';
 import 'auth_screen.dart';
@@ -20,10 +21,14 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _nameController = TextEditingController();
   final _supabase = SupabaseService();
+  final _biometric = BiometricService();
   String _appVersion = '';
   String _buildNumber = '';
   bool _isLoading = true;
   bool _isSyncing = false;
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
+  String _biometricName = 'Biométrie';
 
   @override
   void initState() {
@@ -40,11 +45,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
     final packageInfo = await PackageInfo.fromPlatform();
+    final biometricAvailable = await _biometric.isBiometricAvailable();
+    final biometricEnabled = await _biometric.isBiometricEnabled();
+    final biometricName = await _biometric.getBiometricName();
 
     setState(() {
       _nameController.text = prefs.getString('user_name') ?? '';
       _appVersion = packageInfo.version;
       _buildNumber = packageInfo.buildNumber;
+      _biometricAvailable = biometricAvailable;
+      _biometricEnabled = biometricEnabled;
+      _biometricName = biometricName;
       _isLoading = false;
     });
   }
@@ -304,6 +315,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   const SizedBox(height: 24),
 
+                  // Section Sécurité
+                  _buildSectionTitle('Sécurité'),
+                  const SizedBox(height: 12),
+                  _buildSecurityCard(),
+
+                  const SizedBox(height: 24),
+
                   // Section Compte & Sync
                   _buildSectionTitle('Compte & Synchronisation'),
                   const SizedBox(height: 12),
@@ -517,6 +535,246 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSecurityCard() {
+    if (!_biometricAvailable) {
+      return GlassCard(
+        margin: EdgeInsets.zero,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.fingerprint,
+                color: Colors.grey,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Biométrie non disponible',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Votre appareil ne supporte pas la biométrie',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              _biometricName == 'Face ID' ? Icons.face : Icons.fingerprint,
+              color: const Color(0xFF10B981),
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _biometricName,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _biometricEnabled
+                      ? 'Connexion rapide activée'
+                      : 'Connexion rapide désactivée',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _biometricEnabled,
+            onChanged: (value) async {
+              if (value) {
+                // Activer : demander email/mot de passe
+                _showEnableBiometricDialog();
+              } else {
+                // Désactiver
+                await _biometric.disableBiometric();
+                setState(() => _biometricEnabled = false);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('$_biometricName désactivé'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              }
+            },
+            activeTrackColor: const Color(0xFF10B981).withValues(alpha: 0.5),
+            activeThumbColor: const Color(0xFF10B981),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEnableBiometricDialog() {
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    bool obscurePassword = true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                _biometricName == 'Face ID' ? Icons.face : Icons.fingerprint,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 12),
+              Text('Activer $_biometricName'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Entrez vos identifiants pour activer $_biometricName',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passwordController,
+                obscureText: obscurePassword,
+                decoration: InputDecoration(
+                  labelText: 'Mot de passe',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() => obscurePassword = !obscurePassword);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                final email = emailController.text.trim();
+                final password = passwordController.text;
+
+                if (email.isEmpty || password.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Veuillez remplir tous les champs'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                // Vérifier les credentials en se connectant
+                try {
+                  await _supabase.signIn(email: email, password: password);
+
+                  // Si connexion réussie, activer la biométrie
+                  final success = await _biometric.enableBiometric(email, password);
+
+                  if (success) {
+                    this.setState(() => _biometricEnabled = true);
+                    Navigator.pop(ctx);
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('$_biometricName activé !'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  } else {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Erreur lors de l\'activation'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Identifiants incorrects'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.check),
+              label: const Text('Activer'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
