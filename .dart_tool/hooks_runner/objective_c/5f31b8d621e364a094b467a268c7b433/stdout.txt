@@ -1,0 +1,60 @@
+Running `(cd /Users/hoareaupierre-alain/.pub-cache/hosted/pub.dev/objective_c-9.2.5/; TMPDIR=/var/folders/q9/6wss2ksn3n5_c0lrd7zr82xw0000gp/T/ PATH=/Applications/Xcode.app/Contents/SharedFrameworks/SwiftBuild.framework/Versions/A/PlugIns/SWBBuildService.bundle/Contents/PlugIns/SWBUniversalPlatformPlugin.bundle/Contents/Frameworks/SWBUniversalPlatform.framework/Resources:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/local/bin:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/libexec:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/usr/bin:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/usr/local/bin:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/local/bin:/Applications/Xcode.app/Contents/Developer/usr/bin:/Applications/Xcode.app/Contents/Developer/usr/local/bin:/usr/local/opt/postgresql@15/bin:/usr/local/bin:/usr/local/sbin:/Library/Frameworks/Python.framework/Versions/3.13/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Library/Apple/usr/bin HOME=/Users/hoareaupierre-alain /usr/local/share/flutter/bin/cache/dart-sdk/bin/dart --packages=/Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/package_config.json /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/objective_c/5f31b8d621e364a094b467a268c7b433/hook.dill --config=/Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/objective_c/5f31b8d621e364a094b467a268c7b433/input.json )`.
+INFO: 2026-02-24 17:30:00.289608: Running `/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang --version`.
+
+INFO: 2026-02-24 17:30:00.326918: Running `/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang --version`.
+
+INFO: 2026-02-24 17:30:00.356304: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target x86_64-apple-darwin -mmacos-version-min=13 -c /Users/hoareaupierre-alain/.pub-cache/hosted/pub.dev/objective_c-9.2.5/src/include/dart_api_dl.c -fpic -I src -o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/include/dart_api_dl.c.o
+
+INFO: 2026-02-24 17:30:00.357232: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target x86_64-apple-darwin -mmacos-version-min=13 -c /Users/hoareaupierre-alain/.pub-cache/hosted/pub.dev/objective_c-9.2.5/src/objective_c.c -fpic -I src -o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/objective_c.c.o
+
+INFO: 2026-02-24 17:30:00.357701: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target x86_64-apple-darwin -mmacos-version-min=13 -c /Users/hoareaupierre-alain/.pub-cache/hosted/pub.dev/objective_c-9.2.5/test/util.c -fpic -I src -o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/test/util.c.o
+
+INFO: 2026-02-24 17:30:00.357956: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target x86_64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/hoareaupierre-alain/.pub-cache/hosted/pub.dev/objective_c-9.2.5/src/input_stream_adapter.m -fpic -I src -o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/input_stream_adapter.m.o
+
+INFO: 2026-02-24 17:30:00.358412: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target x86_64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/hoareaupierre-alain/.pub-cache/hosted/pub.dev/objective_c-9.2.5/src/observer.m -fpic -I src -o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/observer.m.o
+
+.m.o
+
+INFO: 2026-02-24 17:30:00.358824: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target x86_64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/hoareaupierre-alain/.pub-cache/hosted/pub.dev/objective_c-9.2.5/src/ns_number.m -fpic -I src -o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/ns_number.m.o
+
+INFO: 2026-02-24 17:30:00.359063: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target x86_64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/hoareaupierre-alain/.pub-cache/hosted/pub.dev/objective_c-9.2.5/src/protocol.m -fpic -I src -o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/protocol.m.o
+
+INFO: 2026-02-24 17:30:00.359286: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target x86_64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/hoareaupierre-alain/.pub-cache/hosted/pub.dev/objective_c-9.2.5/src/objective_c_bindings_generated.m -fpic -I src -o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/objective_c_bindings_generated.m.o
+
+INFO: 2026-02-24 17:30:00.460892: 
+INFO: 2026-02-24 17:30:00.461021: Generated /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/objective_c.c.o
+
+INFO: 2026-02-24 17:30:00.461788: 
+INFO: 2026-02-24 17:30:00.461857: 
+INFO: 2026-02-24 17:30:00.461896: Generated /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/include/dart_api_dl.c.o
+
+INFO: 2026-02-24 17:30:00.501427: 
+INFO: 2026-02-24 17:30:00.501481: 
+INFO: 2026-02-24 17:30:00.501517: Generated /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/test/util.c.o
+
+INFO: 2026-02-24 17:30:00.525222: 
+INFO: 2026-02-24 17:30:00.525249: 
+INFO: 2026-02-24 17:30:00.525269: Generated /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/protocol.m.o
+
+INFO: 2026-02-24 17:30:01.040699: 
+INFO: 2026-02-24 17:30:01.040758: 
+INFO: 2026-02-24 17:30:01.040792: Generated /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/ns_number.m.o
+
+INFO: 2026-02-24 17:30:01.079638: 
+INFO: 2026-02-24 17:30:01.079697: 
+INFO: 2026-02-24 17:30:01.079721: Generated /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/input_stream_adapter.m.o
+
+INFO: 2026-02-24 17:30:01.082307: 
+INFO: 2026-02-24 17:30:01.082359: 
+INFO: 2026-02-24 17:30:01.082383: Generated /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/objective_c.m.o
+
+INFO: 2026-02-24 17:30:01.100460: 
+INFO: 2026-02-24 17:30:01.100515: 
+INFO: 2026-02-24 17:30:01.100539: Generated /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/objective_c_bindings_generated.m.o
+
+INFO: 2026-02-24 17:30:01.101134: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -shared -Wl,-encryptable -undefined dynamic_lookup -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target x86_64-apple-darwin -mmacos-version-min=13 /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/include/dart_api_dl.c.o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/objective_c.c.o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/test/util.c.o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/input_stream_adapter.m.o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/objective_c.m.o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/observer.m.o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/ns_number.m.o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/protocol.m.o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/obj/src/objective_c_bindings_generated.m.o -o /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/objective_c.dylib
+
+INFO: 2026-02-24 17:30:01.170834: 
+INFO: 2026-02-24 17:30:01.171004: 
+INFO: 2026-02-24 17:30:01.171046: Generated /Users/hoareaupierre-alain/Projects/medecin_remplacant/.dart_tool/hooks_runner/shared/objective_c/build/5f31b8d621/objective_c.dylib
+
