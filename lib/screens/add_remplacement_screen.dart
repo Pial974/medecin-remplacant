@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/remplacement.dart';
@@ -57,9 +58,12 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
     super.dispose();
   }
 
+  // Normalise le séparateur décimal (virgule → point)
+  String _normalizeMontant(String text) => text.replaceAll(',', '.');
+
   // Calculs selon le mode de saisie
   double get _montantAvantRetro {
-    final montantSaisi = double.tryParse(_montantController.text) ?? 0;
+    final montantSaisi = double.tryParse(_normalizeMontant(_montantController.text)) ?? 0;
     if (_inputMode == MontantInputMode.avantRetro) {
       // Mode: Montant avant rétro → on retourne directement
       return montantSaisi;
@@ -76,7 +80,7 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
   }
 
   double get _montantApresRetro {
-    final montantSaisi = double.tryParse(_montantController.text) ?? 0;
+    final montantSaisi = double.tryParse(_normalizeMontant(_montantController.text)) ?? 0;
     if (_inputMode == MontantInputMode.avantRetro) {
       // Mode: Montant avant → on calcule après
       return montantSaisi * (_tauxRetrocession / 100);
@@ -110,38 +114,40 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
     }
   }
 
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      final remplacement = Remplacement(
-        id: widget.remplacement?.id,
-        dateDebut: _dateDebut,
-        dateFin: _dateFin,
-        medecinRemplace: _medecinController.text.trim(),
-        nombreJours: double.parse(_joursController.text),
-        tauxRetrocession: _tauxRetrocession,
-        montantAvantRetrocession: _montantAvantRetro,
-        modePaiement: _modePaiement,
-        statutPaiement: _statutPaiement,
-        notes: _notesController.text.isEmpty ? null : _notesController.text,
-        createdAt: widget.remplacement?.createdAt,
-      );
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      final provider = context.read<RemplacementProvider>();
-      if (isEditing) {
-        provider.updateRemplacement(remplacement);
-      } else {
-        provider.addRemplacement(remplacement);
-      }
+    final remplacement = Remplacement(
+      id: widget.remplacement?.id,
+      dateDebut: _dateDebut,
+      dateFin: _dateFin,
+      medecinRemplace: _medecinController.text.trim(),
+      nombreJours: double.parse(_joursController.text.replaceAll(',', '.')),
+      tauxRetrocession: _tauxRetrocession,
+      montantAvantRetrocession: _montantAvantRetro,
+      modePaiement: _modePaiement,
+      statutPaiement: _statutPaiement,
+      notes: _notesController.text.isEmpty ? null : _notesController.text,
+      createdAt: widget.remplacement?.createdAt,
+    );
 
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isEditing
-              ? 'Remplacement modifié'
-              : 'Remplacement ajouté'),
-        ),
-      );
+    final provider = context.read<RemplacementProvider>();
+    if (isEditing) {
+      await provider.updateRemplacement(remplacement);
+    } else {
+      await provider.addRemplacement(remplacement);
     }
+
+    if (!mounted) return;
+
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(isEditing
+            ? 'Remplacement modifié'
+            : 'Remplacement ajouté'),
+      ),
+    );
   }
 
   @override
@@ -182,6 +188,9 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.person),
                   ),
+                  onChanged: (value) {
+                    _medecinController.text = value;
+                  },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Champ requis';
@@ -240,10 +249,11 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.timer),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.text,
+              inputFormatters: [_DecimalSeparatorFormatter()],
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Champ requis';
-                if (double.tryParse(value) == null) return 'Nombre invalide';
+                if (double.tryParse(value.replaceAll(',', '.')) == null) return 'Nombre invalide';
                 return null;
               },
             ),
@@ -321,11 +331,12 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
                     ? 'Montant total facturé'
                     : 'Montant à recevoir après rétrocession',
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.text,
+              inputFormatters: [_DecimalSeparatorFormatter()],
               onChanged: (_) => setState(() {}),
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Champ requis';
-                if (double.tryParse(value) == null) return 'Montant invalide';
+                if (double.tryParse(value.replaceAll(',', '.')) == null) return 'Montant invalide';
                 return null;
               },
             ),
@@ -470,5 +481,17 @@ class _AddRemplacementScreenState extends State<AddRemplacementScreen> {
         ],
       ),
     );
+  }
+}
+
+// Remplace la virgule par un point dans les champs numériques (locale fr)
+class _DecimalSeparatorFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (!newValue.text.contains(',')) return newValue;
+    return newValue.copyWith(text: newValue.text.replaceAll(',', '.'));
   }
 }
