@@ -89,7 +89,9 @@ class DashboardScreen extends StatelessWidget {
                       _buildMetricsCards(context, provider),
                       const SizedBox(height: 24),
                       _buildRevenusChart(context, provider),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
+                      _buildPaymentStatusChart(context, provider),
+                      const SizedBox(height: 16),
                       _buildMedecinStats(context, provider),
                     ],
                   ),
@@ -402,12 +404,14 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildRevenusChart(BuildContext context, RemplacementProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentMonth = DateTime.now().month;
+    final currencyFormat = NumberFormat.currency(locale: 'fr_FR', symbol: '€');
     final moisNoms = [
       'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin',
       'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'
     ];
 
-    // Préparer les données pour le graphique
     final Map<int, double> revenusParMois = {};
     for (final data in provider.revenusParMois) {
       final mois = int.parse(data['mois'] as String);
@@ -418,172 +422,325 @@ class DashboardScreen extends StatelessWidget {
     final barGroups = List.generate(12, (index) {
       final mois = index + 1;
       final montant = revenusParMois[mois] ?? 0;
+      final isCurrentMonth = mois == currentMonth && provider.selectedYear == DateTime.now().year;
       return BarChartGroupData(
         x: index,
         barRods: [
           BarChartRodData(
             toY: montant,
-            color: Theme.of(context).colorScheme.primary,
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: isCurrentMonth
+                  ? [const Color(0xFF10B981), const Color(0xFF34D399)]
+                  : [
+                      const Color(0xFF6366F1).withValues(alpha: isDark ? 0.7 : 0.6),
+                      const Color(0xFF818CF8).withValues(alpha: isDark ? 0.9 : 0.85),
+                    ],
+            ),
             width: 16,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
           ),
         ],
       );
     });
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Revenus mensuels (net)',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: barGroups
-                          .map((g) => g.barRods.first.toY)
-                          .fold(0.0, (a, b) => a > b ? a : b) *
-                      1.2,
-                  barGroups: barGroups,
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 50,
-                        getTitlesWidget: (value, meta) {
-                          if (value == 0) return const Text('');
-                          return Text(
-                            '${(value / 1000).toStringAsFixed(0)}k',
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
+    final maxY = barGroups.map((g) => g.barRods.first.toY).fold(0.0, (a, b) => a > b ? a : b);
+
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.bar_chart, color: Color(0xFF6366F1), size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Revenus mensuels nets', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                    Text('${provider.selectedYear}', style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
+                  ],
+                ),
+              ),
+              if (provider.selectedYear == DateTime.now().year)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10, height: 10,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF34D399)]),
+                        borderRadius: BorderRadius.circular(3),
                       ),
                     ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            moisNoms[value.toInt()],
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
+                    const SizedBox(width: 4),
+                    Text('Mois en cours', style: TextStyle(fontSize: 10, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 200,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: maxY > 0 ? maxY * 1.25 : 1000,
+                barGroups: barGroups,
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (_) => isDark ? Colors.grey.shade800.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      if (rod.toY == 0) return null;
+                      return BarTooltipItem(
+                        '${moisNoms[group.x]}\n',
+                        TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+                        children: [
+                          TextSpan(
+                            text: currencyFormat.format(rod.toY),
+                            style: const TextStyle(fontSize: 13, color: Color(0xFF10B981), fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 44,
+                      getTitlesWidget: (value, meta) {
+                        if (value == 0 || value == meta.max) return const SizedBox.shrink();
+                        return Text('${(value / 1000).toStringAsFixed(0)}k', style: TextStyle(fontSize: 10, color: Colors.grey.shade500));
+                      },
                     ),
                   ),
-                  borderData: FlBorderData(show: false),
-                  gridData: const FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 24,
+                      getTitlesWidget: (value, meta) {
+                        final idx = value.toInt();
+                        final isCurrentMois = (idx + 1) == currentMonth && provider.selectedYear == DateTime.now().year;
+                        return Text(
+                          moisNoms[idx],
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isCurrentMois ? FontWeight.bold : FontWeight.normal,
+                            color: isCurrentMois ? const Color(0xFF10B981) : Colors.grey.shade500,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                borderData: FlBorderData(show: false),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: isDark ? Colors.grey.shade700.withValues(alpha: 0.4) : Colors.grey.shade300.withValues(alpha: 0.6),
+                    strokeWidth: 1,
+                    dashArray: [4, 4],
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildPaymentStatusChart(BuildContext context, RemplacementProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currencyFormat = NumberFormat.currency(locale: 'fr_FR', symbol: '€');
+    final nbPaye = provider.allRemplacements.where((r) => r.statutPaiement == 'Payé').length;
+    final nbAttente = provider.allRemplacements.where((r) => r.statutPaiement == 'En attente').length;
+    final nbRetard = provider.allRemplacements.where((r) => r.statutPaiement == 'En retard').length;
+    final total = provider.allRemplacements.length;
+    if (total == 0) return const SizedBox.shrink();
+
+    final sections = <PieChartSectionData>[
+      if (nbPaye > 0) PieChartSectionData(value: nbPaye.toDouble(), color: const Color(0xFF10B981), title: '$nbPaye', radius: 45, titleStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+      if (nbAttente > 0) PieChartSectionData(value: nbAttente.toDouble(), color: const Color(0xFFF59E0B), title: '$nbAttente', radius: 45, titleStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+      if (nbRetard > 0) PieChartSectionData(value: nbRetard.toDouble(), color: const Color(0xFFEF4444), title: '$nbRetard', radius: 45, titleStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+    ];
+
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.pie_chart_outline, color: Color(0xFF10B981), size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Text('État des paiements', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              SizedBox(
+                width: 140, height: 140,
+                child: PieChart(PieChartData(sections: sections, centerSpaceRadius: 38, sectionsSpace: 3, pieTouchData: PieTouchData(enabled: false))),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (provider.montantEnAttente > 0) ...[
+                      Text('À encaisser', style: TextStyle(fontSize: 11, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
+                      Text(currencyFormat.format(provider.montantEnAttente), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B))),
+                      const SizedBox(height: 12),
+                    ],
+                    _buildLegendItem('Payé', nbPaye, total, const Color(0xFF10B981), isDark),
+                    const SizedBox(height: 8),
+                    _buildLegendItem('En attente', nbAttente, total, const Color(0xFFF59E0B), isDark),
+                    if (nbRetard > 0) ...[
+                      const SizedBox(height: 8),
+                      _buildLegendItem('En retard', nbRetard, total, const Color(0xFFEF4444), isDark),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, int count, int total, Color color, bool isDark) {
+    final pct = total > 0 ? (count / total * 100).toStringAsFixed(0) : '0';
+    return Row(
+      children: [
+        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 8),
+        Expanded(child: Text(label, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700))),
+        Text('$count ($pct%)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+      ],
     );
   }
 
   Widget _buildMedecinStats(BuildContext context, RemplacementProvider provider) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final currencyFormat = NumberFormat.currency(locale: 'fr_FR', symbol: '€');
+    if (provider.statsParMedecin.isEmpty) return const SizedBox.shrink();
 
-    if (provider.statsParMedecin.isEmpty) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Text('Aucune donnée par médecin'),
-        ),
-      );
-    }
+    final maxNet = provider.statsParMedecin.map((s) => (s['total_net'] as num?)?.toDouble() ?? 0).fold(0.0, (a, b) => a > b ? a : b);
+    final colors = [const Color(0xFF6366F1), const Color(0xFF10B981), const Color(0xFF3B82F6), const Color(0xFFF59E0B), const Color(0xFFEC4899), const Color(0xFF8B5CF6)];
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Statistiques par médecin',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            ...provider.statsParMedecin.map((stat) {
-              final medecin = stat['medecin_remplace'] as String;
-              final nbRempl = stat['nb_remplacements'] as int;
-              final totalJours = (stat['total_jours'] as num).toDouble();
-              final tauxMoyen = (stat['taux_moyen'] as num).toDouble();
-              final totalNet = (stat['total_net'] as num?)?.toDouble() ?? 0;
-              final revenuJour = (stat['revenu_jour_moyen'] as num?)?.toDouble() ?? 0;
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: const Color(0xFF3B82F6).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.people_outline, color: Color(0xFF3B82F6), size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Text('Statistiques par médecin', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...provider.statsParMedecin.asMap().entries.map((entry) {
+            final i = entry.key;
+            final stat = entry.value;
+            final medecin = stat['medecin_remplace'] as String;
+            final nbRempl = stat['nb_remplacements'] as int;
+            final totalJours = (stat['total_jours'] as num).toDouble();
+            final tauxMoyen = (stat['taux_moyen'] as num).toDouble();
+            final totalNet = (stat['total_net'] as num?)?.toDouble() ?? 0;
+            final revenuJour = (stat['revenu_jour_moyen'] as num?)?.toDouble() ?? 0;
+            final color = colors[i % colors.length];
+            final progress = maxNet > 0 ? (totalNet / maxNet).clamp(0.0, 1.0) : 0.0;
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+            return Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: isDark ? 0.08 : 0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: color.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                        child: Center(child: Text(medecin.isNotEmpty ? medecin[0].toUpperCase() : '?', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16))),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text('Dr $medecin', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), overflow: TextOverflow.ellipsis)),
+                      Text(currencyFormat.format(totalNet), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: color)),
+                    ],
                   ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Dr $medecin',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          currencyFormat.format(totalNet),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? const Color(0xFF34D399) : Colors.green,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 5,
+                      backgroundColor: color.withValues(alpha: 0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 4,
-                      children: [
-                        _buildStatChip('$nbRempl rempl.'),
-                        _buildStatChip('${totalJours.toStringAsFixed(0)} jours'),
-                        _buildStatChip('${tauxMoyen.toStringAsFixed(0)}% rétro'),
-                        _buildStatChip('${currencyFormat.format(revenuJour)}/j'),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _buildMiniStat(Icons.medical_services_outlined, '$nbRempl rempl.', isDark),
+                      const SizedBox(width: 16),
+                      _buildMiniStat(Icons.calendar_today_outlined, '${totalJours.toStringAsFixed(0)} j', isDark),
+                      const SizedBox(width: 16),
+                      _buildMiniStat(Icons.percent, '${tauxMoyen.toStringAsFixed(0)}%', isDark),
+                      const SizedBox(width: 16),
+                      _buildMiniStat(Icons.trending_up, '${currencyFormat.format(revenuJour)}/j', isDark),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
 
-  Widget _buildStatChip(String label) {
-    return Chip(
-      label: Text(label, style: const TextStyle(fontSize: 11)),
-      padding: EdgeInsets.zero,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+  Widget _buildMiniStat(IconData icon, String label, bool isDark) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: isDark ? Colors.grey.shade500 : Colors.grey.shade500),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 11, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
+      ],
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/remplacement.dart';
 import '../models/notification_model.dart';
 import '../services/database_service.dart';
+import '../services/supabase_service.dart';
 
 // Seuils URSSAF
 const double seuilUrssafBas = 19000.0;
@@ -191,6 +192,24 @@ class RemplacementProvider with ChangeNotifier {
     await loadNotifications();
     await loadStatistiques();
     await loadMedecins();
+    // Sync depuis le cloud en arrière-plan (ne bloque pas l'UI)
+    _syncFromCloud();
+  }
+
+  // Récupère les données du cloud et met à jour le local
+  Future<void> _syncFromCloud() async {
+    if (!SupabaseService().isLoggedIn) return;
+    try {
+      final cloudData = await SupabaseService().fetchFromCloud();
+      if (cloudData.isEmpty) return;
+      for (final r in cloudData) {
+        await _db.updateRemplacement(r); // Hive put = upsert
+      }
+      await loadRemplacements();
+      await loadStatistiques();
+    } catch (_) {
+      // Silencieux : ne pas bloquer si hors-ligne
+    }
   }
 
   // Chargement des remplacements
@@ -263,7 +282,11 @@ class RemplacementProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _db.insertRemplacement(remplacement);
+      final id = await _db.insertRemplacement(remplacement);
+      // Push vers Supabase silencieusement
+      final saved = remplacement.copyWith(id: id, createdAt: DateTime.now());
+      SupabaseService().syncToCloud([saved]).catchError((_) {});
+
       await loadRemplacements();
       await loadStatistiques();
       await loadMedecins();
@@ -283,6 +306,9 @@ class RemplacementProvider with ChangeNotifier {
 
     try {
       await _db.updateRemplacement(remplacement);
+      // Push vers Supabase silencieusement
+      SupabaseService().syncToCloud([remplacement]).catchError((_) {});
+
       await loadRemplacements();
       await loadStatistiques();
       _error = null;
@@ -301,6 +327,9 @@ class RemplacementProvider with ChangeNotifier {
 
     try {
       await _db.deleteRemplacement(id);
+      // Supprimer du cloud silencieusement
+      SupabaseService().deleteFromCloud(id).catchError((_) {});
+
       await loadRemplacements();
       await loadStatistiques();
       _error = null;
