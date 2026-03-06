@@ -448,4 +448,7 @@ class RemplacementProvider with ChangeNotifier {
     _filterMedecin = null;
     notifyListeners();
   }
+
+  // Sync publique (pull-to-refresh, lifecycle)
+  Future<void> syncFromCloud() => _syncFromCloud();
 }

@@ -18,15 +18,29 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RemplacementProvider>().init();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<RemplacementProvider>().syncFromCloud();
+    }
   }
 
   @override
@@ -148,17 +162,29 @@ class _RemplacementsTabState extends State<_RemplacementsTab> {
               Expanded(
                 child: provider.isLoading
                     ? const Center(child: CircularProgressIndicator())
-                    : provider.remplacements.isEmpty
-                        ? _buildEmptyState(context, provider)
-                        : ListView.builder(
-                            padding: const EdgeInsets.only(bottom: 100),
-                            itemCount: provider.remplacements.length,
-                            itemBuilder: (context, index) {
-                              final r = provider.remplacements[index];
-                              return _buildRemplacementCard(
-                                  context, r, currencyFormat, provider);
-                            },
-                          ),
+                    : RefreshIndicator(
+                        onRefresh: () => context.read<RemplacementProvider>().syncFromCloud(),
+                        child: provider.remplacements.isEmpty
+                            ? ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                children: [
+                                  SizedBox(
+                                    height: 400,
+                                    child: _buildEmptyState(context, provider),
+                                  ),
+                                ],
+                              )
+                            : ListView.builder(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.only(bottom: 100),
+                                itemCount: provider.remplacements.length,
+                                itemBuilder: (context, index) {
+                                  final r = provider.remplacements[index];
+                                  return _buildRemplacementCard(
+                                      context, r, currencyFormat, provider);
+                                },
+                              ),
+                      ),
               ),
             ],
           ),
