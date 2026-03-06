@@ -29,6 +29,11 @@ class RemplacementProvider with ChangeNotifier {
   String? _error;
   int _selectedYear = DateTime.now().year;
 
+  // État de synchronisation cloud
+  bool _isSyncing = false;
+  DateTime? _lastSyncAt;
+  String? _syncError;
+
   // Recherche et filtres
   String _searchQuery = '';
   String? _filterStatut; // 'Payé', 'En attente', 'En retard', ou null pour tous
@@ -76,6 +81,9 @@ class RemplacementProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   int get selectedYear => _selectedYear;
+  bool get isSyncing => _isSyncing;
+  DateTime? get lastSyncAt => _lastSyncAt;
+  String? get syncError => _syncError;
 
   // ==================== GESTION URSSAF ====================
 
@@ -199,16 +207,22 @@ class RemplacementProvider with ChangeNotifier {
   // Récupère les données du cloud et met à jour le local
   Future<void> _syncFromCloud() async {
     if (!SupabaseService().isLoggedIn) return;
+    _isSyncing = true;
+    _syncError = null;
+    notifyListeners();
     try {
       final cloudData = await SupabaseService().fetchFromCloud();
-      if (cloudData.isEmpty) return;
       for (final r in cloudData) {
         await _db.updateRemplacement(r); // Hive put = upsert
       }
       await loadRemplacements();
       await loadStatistiques();
-    } catch (_) {
-      // Silencieux : ne pas bloquer si hors-ligne
+      _lastSyncAt = DateTime.now();
+    } catch (e) {
+      _syncError = e.toString();
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
     }
   }
 
@@ -283,9 +297,9 @@ class RemplacementProvider with ChangeNotifier {
 
     try {
       final id = await _db.insertRemplacement(remplacement);
-      // Push vers Supabase silencieusement
       final saved = remplacement.copyWith(id: id, createdAt: DateTime.now());
-      SupabaseService().syncToCloud([saved]).catchError((_) {});
+      // Push vers Supabase (attendu pour fiabilité)
+      await SupabaseService().syncToCloud([saved]);
 
       await loadRemplacements();
       await loadStatistiques();
@@ -306,8 +320,8 @@ class RemplacementProvider with ChangeNotifier {
 
     try {
       await _db.updateRemplacement(remplacement);
-      // Push vers Supabase silencieusement
-      SupabaseService().syncToCloud([remplacement]).catchError((_) {});
+      // Push vers Supabase (attendu pour fiabilité)
+      await SupabaseService().syncToCloud([remplacement]);
 
       await loadRemplacements();
       await loadStatistiques();
@@ -327,8 +341,8 @@ class RemplacementProvider with ChangeNotifier {
 
     try {
       await _db.deleteRemplacement(id);
-      // Supprimer du cloud silencieusement
-      SupabaseService().deleteFromCloud(id).catchError((_) {});
+      // Supprimer du cloud (attendu pour fiabilité)
+      await SupabaseService().deleteFromCloud(id);
 
       await loadRemplacements();
       await loadStatistiques();

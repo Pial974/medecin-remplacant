@@ -137,6 +137,7 @@ class _RemplacementsTabState extends State<_RemplacementsTab> {
                 ? _buildSearchField(provider)
                 : const Text('Mes Remplacements'),
             actions: [
+              if (!_showSearch) _buildSyncIndicator(context, provider),
               IconButton(
                 icon: Icon(_showSearch ? Icons.close : Icons.search),
                 onPressed: () {
@@ -191,6 +192,38 @@ class _RemplacementsTabState extends State<_RemplacementsTab> {
         );
       },
     );
+  }
+
+  Widget _buildSyncIndicator(BuildContext context, RemplacementProvider provider) {
+    if (provider.isSyncing) {
+      return const Padding(
+        padding: EdgeInsets.all(12),
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+    if (provider.syncError != null) {
+      return Tooltip(
+        message: 'Erreur de sync — Glissez vers le bas pour réessayer',
+        child: Icon(Icons.sync_problem, color: Colors.orange.shade400),
+      );
+    }
+    if (provider.lastSyncAt != null) {
+      final diff = DateTime.now().difference(provider.lastSyncAt!);
+      final label = diff.inMinutes < 1
+          ? 'Synchro OK'
+          : diff.inMinutes < 60
+              ? 'Synchro il y a ${diff.inMinutes} min'
+              : 'Synchro il y a ${diff.inHours}h';
+      return Tooltip(
+        message: label,
+        child: const Icon(Icons.cloud_done, color: Color(0xFF10B981), size: 20),
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildSearchField(RemplacementProvider provider) {
