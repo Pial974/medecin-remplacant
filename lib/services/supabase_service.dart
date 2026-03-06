@@ -115,7 +115,7 @@ class SupabaseService {
           dateFin: DateTime.parse(map['date_fin'] as String),
           medecinRemplace: map['medecin_remplace'] as String,
           nombreJours: (map['nombre_jours'] as num).toDouble(),
-          tauxRetrocession: map['taux_retrocession'] as int,
+          tauxRetrocession: (map['taux_retrocession'] as num).toInt(),
           montantAvantRetrocession:
               (map['montant_avant_retrocession'] as num).toDouble(),
           modePaiement: map['mode_paiement'] as String?,
@@ -133,7 +133,8 @@ class SupabaseService {
         );
       }).toList();
     } catch (e) {
-      return [];
+      // Propager l'erreur pour la rendre visible dans _syncError
+      rethrow;
     }
   }
 
