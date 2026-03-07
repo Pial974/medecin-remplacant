@@ -298,13 +298,18 @@ class RemplacementProvider with ChangeNotifier {
     try {
       final id = await _db.insertRemplacement(remplacement);
       final saved = remplacement.copyWith(id: id, createdAt: DateTime.now());
-      // Push vers Supabase (attendu pour fiabilité)
-      await SupabaseService().syncToCloud([saved]);
-
       await loadRemplacements();
       await loadStatistiques();
       await loadMedecins();
       _error = null;
+      // Push vers Supabase — erreur visible mais ne bloque pas l'enregistrement local
+      try {
+        await SupabaseService().syncToCloud([saved]);
+        _syncError = null;
+        _lastSyncAt = DateTime.now();
+      } catch (e) {
+        _syncError = e.toString();
+      }
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -320,12 +325,16 @@ class RemplacementProvider with ChangeNotifier {
 
     try {
       await _db.updateRemplacement(remplacement);
-      // Push vers Supabase (attendu pour fiabilité)
-      await SupabaseService().syncToCloud([remplacement]);
-
       await loadRemplacements();
       await loadStatistiques();
       _error = null;
+      try {
+        await SupabaseService().syncToCloud([remplacement]);
+        _syncError = null;
+        _lastSyncAt = DateTime.now();
+      } catch (e) {
+        _syncError = e.toString();
+      }
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -341,12 +350,15 @@ class RemplacementProvider with ChangeNotifier {
 
     try {
       await _db.deleteRemplacement(id);
-      // Supprimer du cloud (attendu pour fiabilité)
-      await SupabaseService().deleteFromCloud(id);
-
       await loadRemplacements();
       await loadStatistiques();
       _error = null;
+      try {
+        await SupabaseService().deleteFromCloud(id);
+        _syncError = null;
+      } catch (e) {
+        _syncError = e.toString();
+      }
     } catch (e) {
       _error = e.toString();
     } finally {

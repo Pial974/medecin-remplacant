@@ -206,9 +206,23 @@ class _RemplacementsTabState extends State<_RemplacementsTab> {
       );
     }
     if (provider.syncError != null) {
-      return Tooltip(
-        message: 'Erreur de sync — Glissez vers le bas pour réessayer',
-        child: Icon(Icons.sync_problem, color: Colors.orange.shade400),
+      return IconButton(
+        icon: Icon(Icons.sync_problem, color: Colors.orange.shade400),
+        tooltip: 'Erreur de sync',
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur sync: ${provider.syncError}'),
+              backgroundColor: Colors.orange.shade700,
+              duration: const Duration(seconds: 8),
+              action: SnackBarAction(
+                label: 'Réessayer',
+                textColor: Colors.white,
+                onPressed: () => context.read<RemplacementProvider>().syncFromCloud(),
+              ),
+            ),
+          );
+        },
       );
     }
     if (provider.lastSyncAt != null) {

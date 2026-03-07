@@ -73,27 +73,23 @@ class SupabaseService {
     int synced = 0;
 
     for (final r in localRemplacements) {
-      try {
-        await client.from('remplacements').upsert({
-          'id': r.id,
-          'user_id': userId,
-          'date_debut': r.dateDebut.toIso8601String().split('T')[0],
-          'date_fin': r.dateFin.toIso8601String().split('T')[0],
-          'medecin_remplace': r.medecinRemplace,
-          'nombre_jours': r.nombreJours,
-          'taux_retrocession': r.tauxRetrocession,
-          'montant_avant_retrocession': r.montantAvantRetrocession,
-          'mode_paiement': r.modePaiement,
-          'date_paiement': r.datePaiement?.toIso8601String().split('T')[0],
-          'statut_paiement': r.statutPaiement,
-          'notes': r.notes,
-          'created_at': r.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
-          'updated_at': r.updatedAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
-        });
-        synced++;
-      } catch (e) {
-        // Continuer avec les autres
-      }
+      await client.from('remplacements').upsert({
+        'id': r.id,
+        'user_id': userId,
+        'date_debut': r.dateDebut.toIso8601String().split('T')[0],
+        'date_fin': r.dateFin.toIso8601String().split('T')[0],
+        'medecin_remplace': r.medecinRemplace,
+        'nombre_jours': r.nombreJours,
+        'taux_retrocession': r.tauxRetrocession,
+        'montant_avant_retrocession': r.montantAvantRetrocession,
+        'mode_paiement': r.modePaiement,
+        'date_paiement': r.datePaiement?.toIso8601String().split('T')[0],
+        'statut_paiement': r.statutPaiement,
+        'notes': r.notes,
+        'created_at': r.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+        'updated_at': r.updatedAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+      });
+      synced++;
     }
     return synced;
   }
